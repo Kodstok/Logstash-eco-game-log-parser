@@ -1,0 +1,46 @@
+#%{NOM:buyer} bought %{INT:quantity}  from %{NOM:seller} for %{PRICE:price} %{NOM:buyer_account} into %{NOM:seller_account} 
+input
+{
+  file
+  {
+    path => "/home/kodstok/elk_eco/data_without_html.json"
+    sincedb_path => "/dev/null"
+    start_position => "beginning"
+  }
+}
+
+
+filter 
+{
+  grok 
+  {
+    match => 
+    { 
+    "message" => "{\"Username\":\"%{NOM:username}\",\"Text\":\"%{NOM:buyer} bought %{INT:quantity}  from %{NOM:seller} for %{PRICE:price} %{NOM:currency} from %{NOM:buyer_account} into %{NOM:seller_account}\",\"Timestamp\":%{LONG:timestamp},\"Tag\":\"%{NOM:tag}\"}"
+    }
+    pattern_definitions =>
+    {
+      "NOM" => ".*"
+      "INT" => "[0-9]*"
+      "PRICE" => "[0-9]*[.]{0,1}[0-9]*"
+      "LONG" => "[0-9]*[.]{0,1}[0-9]*"      
+     }
+  }
+  date
+  {
+    match => ["timestamp" , "UNIX"]
+    target => "Timestamp_UNIX"
+  }
+  mutate
+  {
+    convert => { "price" => "float" }
+  }
+}
+
+output{
+    elasticsearch{
+        hosts => "localhost:9200"
+        index => "test"
+    }
+    stdout { codec => rubydebug }
+}

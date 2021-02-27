@@ -1,0 +1,56 @@
+input
+{
+  file
+  {
+    path => "/home/kodstok/elk_eco/no_tax_no_html.json"
+    codec => json
+    sincedb_path => "/dev/null"
+    start_position => "beginning"
+  }
+}
+
+filter
+{
+  json
+  {
+     source => "message"
+  }
+
+  date
+  {
+    match => ["Timestamp" , "UNIX"]
+    target => "Timestamp_UNIX"
+  }
+}
+filter
+{
+  grok
+  {
+    match =>
+    {
+      "Text" => "%{NOM:buyer} bought %{QUANTITIES:quantity}  from %{NOM:seller} for %{LONG:price} %{NOM:currency} from %{NOM:buyer_account} into %{NOM:seller_account}"
+    }
+    match =>
+    {
+      "Text" => "%{NOM:seller} sold %{QUANTITIES:quantity}  to %{NOM:buyer} for %{LONG:price} %{NOM:currency} from %{NOM:seller_account} into %{NOM:buyer_account}"
+    }
+    pattern_definitions =>
+    {
+      "NOM" => "[a-zA-Z0-9àèìòùÀÈÌÒÙáéíóúýÁÉÍÓÚÝâêîôûÂÊÎÔÛãñõÃÑÕäëïöüÿÄËÏÖÜŸçÇßØøÅåÆæœ -_\[\]]*"
+      "INT" => "[0-9]*"
+      "LONG" => "([0-9],[0-9]{3}|[0-9])*[.]{0,1}[0-9]*"
+      "COLOR" => "[0-9ABCDEF]{6}"
+      "QUANTITIES" =>"([ ]{0,2}[0-9]*[ ]{0,2})*"
+    }
+
+
+  }
+}
+
+output{
+    elasticsearch{
+        hosts => "localhost:9200"
+        index => "test"
+    }
+    stdout { codec => rubydebug }
+}

@@ -1,0 +1,47 @@
+#%{NOM:buyer} bought %{INT:quantity}  from %{NOM:seller} for %{PRICE:price} %{NOM:buyer_account} into %{NOM:seller_account} 
+input
+{
+  file
+  {
+    path => "/home/kodstok/elk_eco/data.json"
+    sincedb_path => "/dev/null"
+    start_position => "beginning"
+  }
+}
+
+
+filter 
+{
+  grok 
+  {
+    match => 
+    {
+      "message" => "{\\"Username\\":\\"%{NOM:Username}\\",\\"Text\\":\\"<style=\\\\\\"InfoLight\\\\\\"><b><link=\\\\\\"ref:User:%{INT}\\\\\\"><ecobadgeicon icon=\\\\\\"%{NOM}\\\\\\"><color=#%{COLOR}>%{NOM:buyer}</color></ecobadgeicon></link></b> bought %{INT:quantity} <b><link=\\\\\\"Item:%{NOM:item}\\\\\\"><style=\\\\\\"Item\\\\\\"><ecoicon item=\\\\\\"%{NOM:item2}\\\\\\"></ecoicon></style></link></b> from <b><link=\\\\\\"ref:User:%{INT}\\\\\\"><ecobadgeicon icon=\\\\\\"%{NOM}\\\\\\"><color=#%{COLOR}>%{NOM:seller}</color></ecobadgeicon></link></b> for <b><link=\\\\\\"ref:Currency:%{INT}\\\\\\"><ecoicon name=\\\\\\"CurrencySymbol\\\\\\"><style=\\\\\\"Currency\\\\\\">%{LONG:amount} %{NOM:Currency}</style></ecoicon></link></b> from <b><link=\\\\\\"ref:%{NOM:seller_account_type}:%{INT}\\\\\\"><ecoicon item=\\\\\\"EconomyViewerItem\\\\\\"><style=\\\\\\"BankAccount\\\\\\">%{NOM:seller_account}</style></ecoicon></link></b> into <b><link=\\\\\\"ref:%{NOM:seller_account_type}:%{INT}\\\\\\"><ecoicon item=\\\\\\"EconomyViewerItem\\\\\\"><style=\\\\\\"BankAccount\\\\\\">%{NOM:buyer_account}</style></ecoicon></link></b></style>\\",\\\"Timestamp\\\":%{LONG:timestamp},\\\"Tag\\":\\\"_Transfers\\\"}"  
+    }
+    pattern_definitions =>
+    {
+      "NOM" => "[a-zA-ZàèìòùÀÈÌÒÙáéíóúýÁÉÍÓÚÝâêîôûÂÊÎÔÛãñõÃÑÕäëïöüÿÄËÏÖÜŸçÇßØøÅåÆæœ _]*"
+      "INT" => "[0-9]*"
+      "PRICE" => "[0-9]*[.]{0,1}[0-9]*"
+      "LONG" => "[0-9]*[.]{0,1}[0-9]*"
+      "COLOR" => "[0-9ABCDEF]{6}"     
+     }
+  }
+  date
+  {
+    match => ["timestamp" , "UNIX"]
+    target => "Timestamp_UNIX"
+  }
+  mutate
+  {
+    convert => { "price" => "float" }
+  }
+}
+
+output{
+    elasticsearch{
+        hosts => "localhost:9200"
+        index => "grok_test"
+    }
+    stdout { codec => rubydebug }
+}
